@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAppStore } from '../store/appStore';
 import type { UserRole } from '../types';
 import { Button } from '../components/common/Button';
-import { Lock, Mail, ArrowRight } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { setSession: setStoreSession } = useAppStore();
 
   const [role, setRole] = useState<UserRole>('hospital');
   const [email, setEmail] = useState('director@metrotrauma.org');
@@ -27,16 +29,35 @@ export const LoginPage: React.FC = () => {
 
     try {
       await login(email, role);
+      setStoreSession(role, email);
       sessionStorage.removeItem('raktsetu_explicit_logout');
       setIsLoading(false);
-      if (role === 'hospital') {
-        navigate('/hospital/dashboard');
+      if (role === 'admin') {
+        navigate('/admin/command-center');
       } else {
-        navigate('/dashboard-preview');
+        navigate('/hospital/dashboard');
       }
     } catch {
       setIsLoading(false);
       setError('Authentication failed. Please verify credentials.');
+    }
+  };
+
+  const handleDemoQuickLaunch = async (selectedRole: UserRole) => {
+    setIsLoading(true);
+    let demoEmail = 'director@metrotrauma.org';
+    if (selectedRole === 'admin') demoEmail = 'demo.admin@raktsetu.network';
+    else if (selectedRole === 'blood_bank') demoEmail = 'operations@nagpurbloodcentre.org';
+
+    await login(demoEmail, selectedRole);
+    setStoreSession(selectedRole, demoEmail);
+    sessionStorage.removeItem('raktsetu_explicit_logout');
+    setIsLoading(false);
+
+    if (selectedRole === 'admin') {
+      navigate('/admin/command-center');
+    } else {
+      navigate('/hospital/dashboard');
     }
   };
 
@@ -203,25 +224,45 @@ export const LoginPage: React.FC = () => {
             </div>
           </form>
 
+          {/* OR Divider */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase font-mono tracking-wider">
+              <span className="bg-white px-2 text-slate-400">OR</span>
+            </div>
+          </div>
+
+          {/* Prominent Continue with Demo Button */}
+          <button
+            type="button"
+            onClick={() => handleDemoQuickLaunch('admin')}
+            className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Continue with Demo (Admin Command)</span>
+          </button>
+
           {/* Quick Demo Switcher */}
-          <div className="mt-6 pt-4 border-t border-slate-100">
+          <div className="mt-4 pt-3 border-t border-slate-100">
             <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wide block text-center mb-2">
-              QUICK TEST CREDENTIALS
+              OR EXPLORE AS ANOTHER DEMO NODE
             </span>
             <div className="flex justify-center gap-2">
               <button
                 type="button"
-                onClick={() => handleDemoPreset('hospital')}
-                className="text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-2 py-1 rounded transition-colors font-mono cursor-pointer"
+                onClick={() => handleDemoQuickLaunch('hospital')}
+                className="text-[11px] text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 rounded transition-colors font-mono cursor-pointer flex items-center gap-1"
               >
-                Hospital Demo
+                <span>Hospital Portal</span>
               </button>
               <button
                 type="button"
-                onClick={() => handleDemoPreset('blood_bank')}
-                className="text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-2 py-1 rounded transition-colors font-mono cursor-pointer"
+                onClick={() => handleDemoQuickLaunch('blood_bank')}
+                className="text-[11px] text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 rounded transition-colors font-mono cursor-pointer flex items-center gap-1"
               >
-                Blood Bank Demo
+                <span>Blood Bank Portal</span>
               </button>
             </div>
           </div>

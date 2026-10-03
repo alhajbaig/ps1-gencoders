@@ -37,12 +37,25 @@ import { BloodBankMatchingPage } from './pages/hospital/BloodBankMatchingPage';
 import { AdminRefillRequestsPage } from './pages/admin/AdminRefillRequestsPage';
 import { HospitalRouteGuard } from './components/hospital/HospitalRouteGuard';
 
+// Phase 6 Admin Network Command Center Pages & Guard
+import { AppStoreProvider } from './store/appStore';
+import { AdminRouteGuard } from './components/admin/AdminRouteGuard';
+import { AdminCommandCenterPage } from './pages/admin/AdminCommandCenterPage';
+import { AdminOrganizationsPage } from './pages/admin/AdminOrganizationsPage';
+import { AdminOrganizationDetailsPage } from './pages/admin/AdminOrganizationDetailsPage';
+import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
+import { AdminNetworkAnalyticsPage } from './pages/admin/AdminNetworkAnalyticsPage';
+import { AdminAlertsPage } from './pages/admin/AdminAlertsPage';
+import { AdminActivityPage } from './pages/admin/AdminActivityPage';
+import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
+
 export function App() {
   return (
     <Router>
-      <AuthProvider>
-        <RegistrationProvider>
-          <HospitalInventoryProvider>
+      <AppStoreProvider>
+        <AuthProvider>
+          <RegistrationProvider>
+            <HospitalInventoryProvider>
             <HospitalRequestProvider>
               <Routes>
                 {/* Hospital Command Center Routes (Custom Portal Layout + Route Guard) */}
@@ -134,12 +147,81 @@ export function App() {
                     </HospitalRouteGuard>
                   }
                 />
+                {/* Phase 6: Admin Network Command Center Routes (Admin Layout + Admin Route Guard) */}
+                <Route
+                  path="/admin/command-center"
+                  element={
+                    <AdminRouteGuard>
+                      <AdminCommandCenterPage />
+                    </AdminRouteGuard>
+                  }
+                />
+                <Route
+                  path="/admin/dashboard"
+                  element={<Navigate to="/admin/command-center" replace />}
+                />
+                <Route
+                  path="/admin/organizations"
+                  element={
+                    <AdminRouteGuard>
+                      <AdminOrganizationsPage />
+                    </AdminRouteGuard>
+                  }
+                />
+                <Route
+                  path="/admin/organizations/:id"
+                  element={
+                    <AdminRouteGuard>
+                      <AdminOrganizationDetailsPage />
+                    </AdminRouteGuard>
+                  }
+                />
+                <Route
+                  path="/admin/audit-logs"
+                  element={
+                    <AdminRouteGuard>
+                      <AdminAuditLogsPage />
+                    </AdminRouteGuard>
+                  }
+                />
+                <Route
+                  path="/admin/network-analytics"
+                  element={
+                    <AdminRouteGuard>
+                      <AdminNetworkAnalyticsPage />
+                    </AdminRouteGuard>
+                  }
+                />
+                <Route
+                  path="/admin/alerts"
+                  element={
+                    <AdminRouteGuard>
+                      <AdminAlertsPage />
+                    </AdminRouteGuard>
+                  }
+                />
+                <Route
+                  path="/admin/activity"
+                  element={
+                    <AdminRouteGuard>
+                      <AdminActivityPage />
+                    </AdminRouteGuard>
+                  }
+                />
+                <Route
+                  path="/admin/settings"
+                  element={
+                    <AdminRouteGuard>
+                      <AdminSettingsPage />
+                    </AdminRouteGuard>
+                  }
+                />
                 <Route
                   path="/admin/refill-requests"
                   element={
-                    <HospitalRouteGuard>
+                    <AdminRouteGuard>
                       <AdminRefillRequestsPage />
-                    </HospitalRouteGuard>
+                    </AdminRouteGuard>
                   }
                 />
 
@@ -224,6 +306,7 @@ export function App() {
         </HospitalInventoryProvider>
       </RegistrationProvider>
     </AuthProvider>
+    </AppStoreProvider>
   </Router>
 );
 }
