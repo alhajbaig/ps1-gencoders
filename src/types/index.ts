@@ -2,7 +2,7 @@ export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-'
 
 export type OrganizationType = 'hospital' | 'blood_bank';
 
-export type UserRole = 'hospital' | 'blood_bank' | 'admin';
+export type UserRole = 'hospital' | 'blood_bank' | 'admin' | 'hospital_staff';
 
 export interface OrganizationRegistrationData {
   organizationType: OrganizationType;
@@ -56,8 +56,11 @@ export interface PredictiveAlert {
 export interface UserSession {
   email: string;
   role: UserRole;
+  userName?: string;
+  staffTitle?: string;
   orgName: string;
   orgId: string;
+  verificationStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
   token?: string;
 }
 

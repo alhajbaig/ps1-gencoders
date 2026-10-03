@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { BloodGroup } from '../types';
 import type {
   HospitalInventoryItem,
@@ -6,6 +6,7 @@ import type {
   InventorySummary,
 } from '../data/hospitalInventory';
 import { inventoryService } from '../services/inventoryService';
+import { localEventBus } from '../sync/localEventBus';
 
 interface ToastNotification {
   id: string;
@@ -51,6 +52,17 @@ export const HospitalInventoryProvider: React.FC<{ children: React.ReactNode }> 
   const [toast, setToast] = useState<ToastNotification | null>(null);
 
   const summary = inventoryService.calculateSummary(inventory);
+
+  useEffect(() => {
+    const unsub = localEventBus.on('INVENTORY_UPDATED', () => {
+      const fresh = inventoryService.getInventory();
+      const freshAct = inventoryService.getActivity();
+      setInventory(fresh);
+      setActivity(freshAct);
+      setLastUpdatedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    });
+    return unsub;
+  }, []);
 
   const dismissToast = useCallback(() => {
     setToast(null);

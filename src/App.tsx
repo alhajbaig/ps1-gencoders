@@ -49,6 +49,13 @@ import { AdminAlertsPage } from './pages/admin/AdminAlertsPage';
 import { AdminActivityPage } from './pages/admin/AdminActivityPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 
+// Hospital Staff & Blood Bank Pages & Guards
+import { HospitalStaffPage } from './pages/hospital/HospitalStaffPage';
+import { HospitalStaffDashboardPage } from './pages/hospital/HospitalStaffDashboardPage';
+import { BloodBankDashboardPage } from './pages/bloodbank/BloodBankDashboardPage';
+import { BloodBankRouteGuard } from './components/bloodbank/BloodBankRouteGuard';
+import { HospitalRegisterPage } from './pages/hospital/HospitalRegisterPage';
+
 export function App() {
   return (
     <Router>
@@ -145,6 +152,31 @@ export function App() {
                     <HospitalRouteGuard>
                       <BloodBankMatchingPage />
                     </HospitalRouteGuard>
+                  }
+                />
+                <Route
+                  path="/hospital/staff"
+                  element={
+                    <HospitalRouteGuard adminOnly>
+                      <HospitalStaffPage />
+                    </HospitalRouteGuard>
+                  }
+                />
+                <Route
+                  path="/hospital/staff/dashboard"
+                  element={
+                    <HospitalRouteGuard>
+                      <HospitalStaffDashboardPage />
+                    </HospitalRouteGuard>
+                  }
+                />
+                {/* Blood Bank Operations Route */}
+                <Route
+                  path="/blood-bank/dashboard"
+                  element={
+                    <BloodBankRouteGuard>
+                      <BloodBankDashboardPage />
+                    </BloodBankRouteGuard>
                   }
                 />
                 {/* Phase 6: Admin Network Command Center Routes (Admin Layout + Admin Route Guard) */}
@@ -273,6 +305,10 @@ export function App() {
                     <RegisterPage />
                   </Layout>
                 }
+              />
+              <Route
+                path="/register/hospital"
+                element={<HospitalRegisterPage />}
               />
               <Route
                 path="/setup-inventory"

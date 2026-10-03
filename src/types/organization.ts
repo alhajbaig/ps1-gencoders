@@ -39,6 +39,7 @@ export interface Organization {
   type: OrganizationType;
   status: OrganizationStatus;
   licenseNumber: string;
+  joinCode?: string; // Unique hospital authorization code for clinical staff joining
   location: OrganizationLocation;
   contact: OrganizationContact;
   registeredAt: string;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useAppStore } from '../../store/appStore';
 import { selectNetworkHealth, selectActiveAlerts, selectPendingVerifications } from '../../store/selectors';
 import {
@@ -28,7 +29,8 @@ interface AdminLayoutProps {
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, pageTitle }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { state, logout, setSession } = useAppStore();
+  const { user, logout: authLogout, loginWithDemo } = useAuth();
+  const { state } = useAppStore();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -93,8 +95,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, pageTitle })
 
   const handleRoleSwitch = (role: 'hospital' | 'admin') => {
     if (role === 'hospital') {
-      setSession('hospital');
-      navigate('/hospital/dashboard');
+      loginWithDemo('hospital').then(() => {
+        navigate('/hospital/dashboard');
+      });
     }
   };
 
@@ -201,13 +204,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, pageTitle })
             </div>
             <div className="hidden xl:block text-left text-xs">
               <p className="font-semibold text-slate-800 leading-tight">State Command Admin</p>
-              <p className="text-[10px] text-slate-400 font-mono">Alhaj Baig</p>
+              <p className="text-[10px] text-slate-400 font-mono">{user?.userName || 'Dr. Alhaj Baig'}</p>
             </div>
 
             <button
               type="button"
-              onClick={() => {
-                logout();
+              onClick={async () => {
+                await authLogout();
                 navigate('/login');
               }}
               className="text-slate-400 hover:text-rose-600 p-1.5 rounded transition-colors cursor-pointer"

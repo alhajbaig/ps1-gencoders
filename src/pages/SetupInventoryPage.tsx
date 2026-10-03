@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegistration } from '../context/RegistrationContext';
 import { useAuth } from '../context/AuthContext';
-import type { BloodGroup } from '../types';
+import type { BloodGroup, UserRole } from '../types';
 import { ALL_BLOOD_GROUPS, DEFAULT_INVENTORY_PRESET } from '../data/mockData';
 import { BloodGroupCard } from '../components/common/BloodGroupCard';
 import { Button } from '../components/common/Button';
@@ -60,10 +60,11 @@ export const SetupInventoryPage: React.FC = () => {
     completeRegistration();
 
     // Also auto-login the newly registered user session
+    const userRole: UserRole = data.organizationType === 'blood_bank' ? 'blood_bank' : 'hospital';
     await login(
       data.email || 'director@apextrauma.org',
-      data.organizationType,
-      data.organizationName || 'Registered Organization'
+      'demo',
+      userRole
     );
 
     setIsSubmitting(false);

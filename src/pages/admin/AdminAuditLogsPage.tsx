@@ -303,7 +303,7 @@ export const AdminAuditLogsPage: React.FC = () => {
                 </div>
 
                 {/* State Diff (Before vs After) */}
-                {(selectedLog.previousState || selectedLog.newState) && (
+                {Boolean(selectedLog.previousState || selectedLog.newState) && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
                       <span className="text-[10px] text-slate-400 uppercase block mb-1">Before State</span>

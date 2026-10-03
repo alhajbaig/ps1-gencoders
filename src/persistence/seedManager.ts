@@ -21,11 +21,45 @@ export const INITIAL_SETTINGS: AppSettings = {
 
 export const INITIAL_ORGANIZATIONS: Organization[] = [
   {
+    id: 'ORG-HOSP-01',
+    name: 'Metropolitan Trauma & General Hospital',
+    code: 'METRO-01',
+    type: 'hospital',
+    status: 'VERIFIED',
+    joinCode: 'METRO-7842',
+    licenseNumber: 'MH-NGP-HSP-2024-001',
+    location: {
+      address: 'Plot 10, Medical Square, Central Corridor',
+      city: 'Nagpur',
+      state: 'Maharashtra',
+      pincode: '440010',
+      coordinates: { lat: 21.1458, lng: 79.0882, x: 45, y: 50 },
+    },
+    contact: {
+      primaryPhone: '+91 712 245 8800',
+      emergencyPhone: '+91 712 245 8809',
+      email: 'hospital.admin@raktsetu.org',
+      website: 'https://metrotrauma.hospital.local',
+    },
+    registeredAt: '2026-08-01T09:00:00Z',
+    verifiedAt: '2026-08-02T10:00:00Z',
+    verifiedBy: 'State Medical Administrator',
+    stats: {
+      totalInventoryUnits: 34.0,
+      criticalStockGroups: ['O-'],
+      activeRequestsCount: 1,
+      completedTransfersCount: 12,
+      lastActiveAt: '2026-10-03T12:00:00Z',
+    },
+    notes: 'Primary apex trauma center with 24/7 dedicated blood storage unit.',
+  },
+  {
     id: 'HSP-00124',
     name: 'CityCare Hospital & Trauma Center',
     code: 'CCH-NGP',
     type: 'hospital',
     status: 'VERIFIED',
+    joinCode: 'CITY-2491',
     licenseNumber: 'MH-NGP-HSP-2024-991',
     location: {
       address: 'Plot 12, Medical Square, Ramdaspeth',
@@ -58,6 +92,7 @@ export const INITIAL_ORGANIZATIONS: Organization[] = [
     code: 'SMH-NGP',
     type: 'hospital',
     status: 'VERIFIED',
+    joinCode: 'SUN-5510',
     licenseNumber: 'MH-NGP-HSP-2023-412',
     location: {
       address: 'Central Avenue Road, Gandhibagh',

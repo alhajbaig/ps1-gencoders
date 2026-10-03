@@ -5,6 +5,7 @@ import { bloodRequestRepository } from '../../services/bloodRequestRepository';
 import { bloodBankService } from '../../services/bloodBankService';
 import { reservationService } from '../../services/reservationService';
 import { useHospitalInventory } from '../../context/HospitalInventoryContext';
+import { useAppStore } from '../../store/appStore';
 import type { BloodRequest } from '../../types/bloodRequest';
 import type { MatchingResult, BloodBankMatch } from '../../types/matching';
 import type { BloodReservation } from '../../types/reservation';
@@ -25,6 +26,7 @@ import {
 export const BloodBankMatchingPage: React.FC = () => {
   const { requestId } = useParams<{ requestId: string }>();
   const { refreshInventory } = useHospitalInventory();
+  const { mutate } = useAppStore();
 
   const [request, setRequest] = useState<BloodRequest | null>(null);
   const [matchingResult, setMatchingResult] = useState<MatchingResult | null>(null);
@@ -81,9 +83,56 @@ export const BloodBankMatchingPage: React.FC = () => {
         bloodGroup: request.bloodGroup,
         quantityLitres: match.safeAllocation,
         durationHours: 4,
-        createdBy: 'Dr. Sarah Verma (Trauma Lead)',
+        createdBy: 'Dr. Rahul Sharma (Clinical Lead)',
         notes: `Smart Load Balancer allocation via ${match.bank.name}`,
       });
+
+      // Synchronize with Canonical Store
+      mutate((draft) => {
+        const targetReq = draft.requests.find((r) => r.id === request.id);
+        if (targetReq) {
+          targetReq.status = 'reserved';
+          targetReq.matchedBloodBankId = match.bank.id;
+          targetReq.matchedBloodBankName = match.bank.name;
+        }
+
+        const bank = draft.bloodBanks.find((b) => b.id === match.bank.id);
+        if (bank && bank.inventories[request.bloodGroup]) {
+          bank.inventories[request.bloodGroup].reservedStock += match.safeAllocation;
+        }
+
+        draft.reservations.unshift({
+          id: res.id,
+          reservationId: res.reservationId,
+          requestId: request.id,
+          bloodBankId: match.bank.id,
+          bloodBankName: match.bank.name,
+          hospitalId: request.hospitalId,
+          hospitalName: request.hospitalName,
+          bloodGroup: request.bloodGroup,
+          quantityLitres: match.safeAllocation,
+          status: 'ACTIVE',
+          expiresAt: res.expiresAt,
+          createdAt: res.createdAt,
+          updatedAt: res.updatedAt || new Date().toISOString(),
+          createdBy: 'Dr. Rahul Sharma',
+        });
+
+        draft.auditLogs.unshift({
+          id: 'AUD-' + Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          actorId: 'hospital-user',
+          actorName: 'Hospital Clinical Team',
+          actorRole: 'hospital',
+          organizationId: request.hospitalId,
+          organizationName: request.hospitalName,
+          action: 'RESERVATION_CREATED',
+          entityType: 'RESERVATION',
+          entityId: res.reservationId,
+          severity: 'NOTICE',
+          reason: `Reserved ${match.safeAllocation} L of ${request.bloodGroup} from ${match.bank.name}`,
+        });
+      }, 'RESERVATION_CREATED');
 
       setActiveReservation(res);
       await loadData();
@@ -94,12 +143,53 @@ export const BloodBankMatchingPage: React.FC = () => {
     }
   };
 
-  // Step 20: Simulate Bank Dispatch
+  // Step 20: Bank Dispatch
   const handleDispatch = async () => {
     if (!activeReservation) return;
     setIsReserving(true);
     try {
       const updated = await reservationService.dispatchReservation(activeReservation.id);
+
+      // Synchronize with Canonical Store
+      mutate((draft) => {
+        const r = draft.reservations.find((res) => res.id === activeReservation.id);
+        if (r) r.status = 'FULFILLED';
+
+        const trId = 'TR-' + Date.now().toString().slice(-5);
+        draft.transfers.unshift({
+          id: 'tr_' + Math.random().toString(36).substring(2),
+          transferId: trId,
+          reservationId: activeReservation.reservationId,
+          requestId: activeReservation.requestId,
+          fromOrganizationId: activeReservation.bloodBankId,
+          fromOrganizationName: activeReservation.bloodBankName,
+          toOrganizationId: activeReservation.hospitalId,
+          toOrganizationName: activeReservation.hospitalName,
+          bloodGroup: activeReservation.bloodGroup,
+          quantityUnits: activeReservation.quantityLitres,
+          status: 'IN_TRANSIT',
+          urgency: 'CRITICAL',
+          dispatchedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+
+        draft.auditLogs.unshift({
+          id: 'AUD-' + Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          actorId: 'blood-bank-dispatch',
+          actorName: activeReservation.bloodBankName,
+          actorRole: 'blood_bank',
+          organizationId: activeReservation.bloodBankId,
+          organizationName: activeReservation.bloodBankName,
+          action: 'TRANSFER_DISPATCHED',
+          entityType: 'TRANSFER',
+          entityId: trId,
+          severity: 'NOTICE',
+          reason: `Cold-chain courier dispatched: ${activeReservation.quantityLitres} L of ${activeReservation.bloodGroup} to ${activeReservation.hospitalName}`,
+        });
+      }, 'TRANSFER_UPDATED');
+
       setActiveReservation(updated);
       await loadData();
     } catch (err: unknown) {
@@ -118,8 +208,62 @@ export const BloodBankMatchingPage: React.FC = () => {
     try {
       const result = await reservationService.confirmReceipt(
         activeReservation.id,
-        'Dr. Sarah Verma (Trauma Lead)'
+        'Dr. Rahul Sharma (Clinical Lead)'
       );
+
+      // Synchronize with Canonical Store
+      mutate((draft) => {
+        const hospItem = draft.hospitalInventory.find((i) => i.bloodGroup === activeReservation.bloodGroup);
+        if (hospItem) {
+          hospItem.availableQuantity = Math.round((hospItem.availableQuantity + activeReservation.quantityLitres) * 10) / 10;
+          hospItem.status = hospItem.availableQuantity > 3.0 ? 'healthy' : hospItem.availableQuantity > 1.5 ? 'attention' : 'critical';
+        }
+
+        const tr = draft.transfers.find((t) => t.reservationId === activeReservation.reservationId);
+        if (tr) {
+          tr.status = 'DELIVERED';
+          tr.deliveredAt = new Date().toISOString();
+        }
+
+        const req = draft.requests.find((r) => r.id === activeReservation.requestId);
+        if (req) req.status = 'completed';
+
+        const txnId = result.transactionId;
+        draft.transactions.unshift({
+          id: 'txn_' + Math.random().toString(36).substring(2),
+          transactionId: txnId,
+          organizationId: activeReservation.hospitalId,
+          hospitalId: activeReservation.hospitalId,
+          bloodGroup: activeReservation.bloodGroup,
+          transactionType: 'TRANSFERRED_IN',
+          quantityLitres: activeReservation.quantityLitres,
+          quantityBefore: hospItem ? hospItem.availableQuantity - activeReservation.quantityLitres : 0,
+          quantityAfter: hospItem ? hospItem.availableQuantity : activeReservation.quantityLitres,
+          referenceType: 'TRANSFER',
+          referenceId: activeReservation.reservationId,
+          reason: 'Network Refill Delivery Received',
+          performedBy: 'Hospital Reception Staff',
+          verifiedBy: 'Dr. Rajesh Verma',
+          status: 'VERIFIED',
+          occurredAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+
+        draft.auditLogs.unshift({
+          id: 'AUD-' + Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          actorId: 'hospital-receiver',
+          actorName: 'Hospital Clinical Team',
+          actorRole: 'hospital',
+          organizationId: activeReservation.hospitalId,
+          organizationName: activeReservation.hospitalName,
+          action: 'TRANSFER_RECEIVED',
+          entityType: 'TRANSFER',
+          entityId: txnId,
+          severity: 'NOTICE',
+          reason: `Confirmed delivery receipt: +${activeReservation.quantityLitres} L of ${activeReservation.bloodGroup}. Hospital inventory incremented.`,
+        });
+      }, 'TRANSFER_UPDATED');
 
       setReceivedTxnId(result.transactionId);
       await refreshInventory();

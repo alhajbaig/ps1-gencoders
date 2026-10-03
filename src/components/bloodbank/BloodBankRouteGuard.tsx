@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useAppStore } from '../../store/appStore';
 
-interface AdminRouteGuardProps {
+interface BloodBankRouteGuardProps {
   children: React.ReactNode;
 }
 
-export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
+export const BloodBankRouteGuard: React.FC<BloodBankRouteGuardProps> = ({ children }) => {
   const { user, isAuthenticated, loginWithDemo } = useAuth();
-  const { setSession } = useAppStore();
   const location = useLocation();
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -17,7 +15,7 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) =>
     const wasLoggedOut = sessionStorage.getItem('raktsetu_explicit_logout') === 'true';
 
     if (!isAuthenticated && !wasLoggedOut) {
-      loginWithDemo('admin').then(() => {
+      loginWithDemo('blood_bank').then(() => {
         setIsInitializing(false);
       });
     } else {
@@ -25,25 +23,18 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) =>
     }
   }, [isAuthenticated, loginWithDemo]);
 
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      setSession('admin', user.email, user.orgName);
-    }
-  }, [user, setSession]);
-
   if (isInitializing) {
     return (
-      <div className="min-h-screen bg-[#0B1528] flex items-center justify-center font-mono text-xs text-slate-400">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center font-mono text-xs text-slate-500">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-          <span>Verifying state network command authorization...</span>
+          <span className="w-2 h-2 rounded-full bg-[#0F2E5A] animate-ping" />
+          <span>Verifying regional blood depot authorization...</span>
         </div>
       </div>
     );
   }
 
-  // Ensure role is admin
-  if (!isAuthenticated || user?.role !== 'admin') {
+  if (!isAuthenticated || user?.role !== 'blood_bank') {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

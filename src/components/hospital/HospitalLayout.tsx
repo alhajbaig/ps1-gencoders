@@ -13,16 +13,16 @@ import {
   FileText,
   Scale,
   Flame,
-  ShieldCheck,
   Menu,
   X,
   CheckCircle2,
   Bell,
+  Users,
 } from 'lucide-react';
 
 interface HospitalLayoutProps {
   children: React.ReactNode;
-  pageTitle: string;
+  pageTitle?: string;
 }
 
 export const HospitalLayout: React.FC<HospitalLayoutProps> = ({ children, pageTitle }) => {
@@ -37,10 +37,23 @@ export const HospitalLayout: React.FC<HospitalLayoutProps> = ({ children, pageTi
   // Active hospital organization name & ID
   const orgName = data.organizationName || user?.orgName || 'XYZ Hospital';
   const orgId = data.organizationId || user?.orgId || 'HSP-00124';
+  const isStaff = user?.role === 'hospital_staff';
 
   const navItems = [
-    { label: 'Overview', path: '/hospital/dashboard', icon: LayoutDashboard, enabled: true },
+    {
+      label: 'Overview',
+      path: isStaff ? '/hospital/staff/dashboard' : '/hospital/dashboard',
+      icon: LayoutDashboard,
+      enabled: true,
+    },
     { label: 'Inventory', path: '/hospital/inventory', icon: Boxes, enabled: true },
+    {
+      label: 'Record Issue',
+      path: '/hospital/usage/new',
+      icon: PlusCircle,
+      enabled: true,
+      activeMatch: (pathname: string) => pathname.startsWith('/hospital/usage'),
+    },
     {
       label: 'Requests',
       path: '/hospital/requests',
@@ -57,13 +70,6 @@ export const HospitalLayout: React.FC<HospitalLayoutProps> = ({ children, pageTi
       activeMatch: (pathname: string) => pathname.startsWith('/hospital/predictions'),
     },
     {
-      label: 'Record Issue',
-      path: '/hospital/usage/new',
-      icon: PlusCircle,
-      enabled: true,
-      activeMatch: (pathname: string) => pathname.startsWith('/hospital/usage'),
-    },
-    {
       label: 'Ledger History',
       path: '/hospital/transactions',
       icon: FileText,
@@ -71,25 +77,25 @@ export const HospitalLayout: React.FC<HospitalLayoutProps> = ({ children, pageTi
       activeMatch: (pathname: string) => pathname.startsWith('/hospital/transactions'),
     },
     {
+      label: 'Staff Management',
+      path: '/hospital/staff',
+      icon: Users,
+      enabled: !isStaff,
+      activeMatch: (pathname: string) => pathname.startsWith('/hospital/staff'),
+    },
+    {
       label: 'Reconciliation',
       path: '/hospital/inventory/reconciliation',
       icon: Scale,
-      enabled: true,
+      enabled: !isStaff,
       activeMatch: (pathname: string) => pathname.startsWith('/hospital/inventory/reconciliation'),
     },
     {
       label: 'Usage Analytics',
       path: '/hospital/analytics/usage',
       icon: Flame,
-      enabled: true,
+      enabled: !isStaff,
       activeMatch: (pathname: string) => pathname.startsWith('/hospital/analytics'),
-    },
-    {
-      label: 'Admin Approvals',
-      path: '/admin/refill-requests',
-      icon: ShieldCheck,
-      enabled: true,
-      activeMatch: (pathname: string) => pathname.startsWith('/admin'),
     },
   ];
 
@@ -175,9 +181,19 @@ export const HospitalLayout: React.FC<HospitalLayoutProps> = ({ children, pageTi
               <span className="font-semibold text-xs text-[#0F172A] truncate max-w-[130px]">
                 {orgName}
               </span>
-              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                Verified
-              </span>
+              {user?.verificationStatus === 'PENDING' ? (
+                <span className="text-[10px] font-mono text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 font-bold">
+                  Pending
+                </span>
+              ) : user?.verificationStatus === 'SUSPENDED' ? (
+                <span className="text-[10px] font-mono text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200 font-bold">
+                  Suspended
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                  Verified
+                </span>
+              )}
             </div>
             <span className="text-[11px] font-mono text-slate-400 block mb-2">
               {orgId}
@@ -347,7 +363,21 @@ export const HospitalLayout: React.FC<HospitalLayoutProps> = ({ children, pageTi
         </header>
 
         {/* Content Body */}
-        <main className="flex-1 p-4 sm:p-8 max-w-[1400px] w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-8 max-w-[1400px] w-full mx-auto space-y-4">
+          {/* Pending Verification Notice Banner (Requirement #10 & #16) */}
+          {user?.verificationStatus === 'PENDING' && (
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-4 animate-in fade-in">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <span>
+                  <strong>Facility Profile Under Verification:</strong> An administrator is reviewing your hospital's statutory license. Internal bedside inventory and usage tracking are active; external blood bank matching will unlock automatically once verified.
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded border border-amber-200 shrink-0">
+                PENDING APPROVAL
+              </span>
+            </div>
+          )}
           {children}
         </main>
       </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HospitalLayout } from '../../components/hospital/HospitalLayout';
 import { useHospitalInventory } from '../../context/HospitalInventoryContext';
+import { useAuth } from '../../context/AuthContext';
+import { useAppStore } from '../../store/appStore';
 import { transactionService } from '../../services/transactionService';
 import { UsageReviewDialog } from '../../components/usage/UsageReviewDialog';
 import type { BloodGroup } from '../../types';
@@ -28,6 +30,8 @@ const DEPARTMENTS = [
 ];
 
 export const RecordBloodUsagePage: React.FC = () => {
+  const { user } = useAuth();
+  const { state: appState, mutate } = useAppStore();
   const { inventory, refreshInventory } = useHospitalInventory();
 
   // Form State
@@ -48,10 +52,12 @@ export const RecordBloodUsagePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [createdTxn, setCreatedTxn] = useState<BloodInventoryTransaction | null>(null);
 
-  // Selected blood group's stock
+  // Selected blood group's stock from canonical store
+  const storeItem = appState.hospitalInventory.find((i) => i.bloodGroup === bloodGroup);
   const currentItem = inventory.find((i) => i.bloodGroup === bloodGroup);
-  const availableStock = currentItem ? currentItem.availableQuantity : 0;
+  const availableStock = storeItem ? storeItem.availableQuantity : currentItem ? currentItem.availableQuantity : 0;
   const isInsufficient = quantityLitres > availableStock;
+  const remainingStock = Math.max(0, Math.round((availableStock - quantityLitres) * 10) / 10);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +73,7 @@ export const RecordBloodUsagePage: React.FC = () => {
     }
     if (isInsufficient) {
       setError(
-        `Insufficient inventory: ${quantityLitres} units requested, but only ${availableStock} units of ${bloodGroup} are available.`
+        `Insufficient ${bloodGroup} inventory. Available: ${availableStock.toFixed(1)} units, Requested: ${quantityLitres.toFixed(1)} units. Inventory cannot become negative.`
       );
       return;
     }
@@ -80,6 +86,10 @@ export const RecordBloodUsagePage: React.FC = () => {
     setError(null);
 
     try {
+      const performerName = user?.userName || 'Dr. Rahul Sharma';
+      const hospitalId = user?.orgId || 'ORG-HOSP-01';
+      const hospitalName = user?.orgName || 'Metropolitan Trauma & General Hospital';
+
       const txn = await transactionService.recordIssue({
         bloodGroup,
         quantityLitres,
@@ -88,9 +98,40 @@ export const RecordBloodUsagePage: React.FC = () => {
         reason: reason.trim(),
         notes: notes.trim(),
         occurredAt: new Date(issuedAt).toISOString(),
-        performedBy: 'Dr. Sarah Verma (Staff)',
-        verifiedBy: 'Dr. Sarah Verma',
+        performedBy: `${performerName} (${user?.role === 'hospital_staff' ? 'Staff' : 'Admin'})`,
+        verifiedBy: user?.userName || 'Dr. Rajesh Verma',
       });
+
+      // Synchronize with Canonical AppStore in Realtime
+      mutate((draft) => {
+        // 1. Decrement hospital inventory atomically
+        const item = draft.hospitalInventory.find((i) => i.bloodGroup === bloodGroup);
+        if (item) {
+          item.availableQuantity = Math.max(0, Math.round((item.availableQuantity - quantityLitres) * 10) / 10);
+          if (item.availableQuantity <= 1.5) item.status = 'critical';
+          else if (item.availableQuantity <= 3.0) item.status = 'attention';
+        }
+
+        // 2. Insert into transactions
+        draft.transactions.unshift(txn);
+
+        // 3. Create Immutable Audit Log
+        draft.auditLogs.unshift({
+          id: 'AUD-' + Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          actorId: user?.email || 'staff-transfusion',
+          actorName: performerName,
+          actorRole: user?.role || 'hospital_staff',
+          organizationId: hospitalId,
+          organizationName: hospitalName,
+          action: 'BLOOD_ISSUED',
+          entityType: 'TRANSACTION',
+          entityId: txn.transactionId,
+          severity: remainingStock <= 1.5 ? 'WARNING' : 'NOTICE',
+          reason: `Blood issue to Case ${patientCaseId.trim()}: ${quantityLitres} L of ${bloodGroup}`,
+          newState: txn,
+        });
+      }, 'TRANSACTION_CREATED');
 
       await refreshInventory();
       setCreatedTxn(txn);
@@ -307,6 +348,25 @@ export const RecordBloodUsagePage: React.FC = () => {
                     Units
                   </span>
                 </div>
+
+                {/* Real-time Calculation Panel (Requirement #24) */}
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 text-xs font-mono grid grid-cols-3 text-center">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Available</span>
+                    <strong className="text-slate-800">{availableStock.toFixed(1)} U</strong>
+                  </div>
+                  <div className="border-x border-slate-200">
+                    <span className="text-[10px] text-slate-400 block uppercase">Issuing</span>
+                    <strong className="text-rose-600">-{quantityLitres.toFixed(1)} U</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Remaining</span>
+                    <strong className={remainingStock <= 1.5 ? 'text-rose-700 font-bold' : 'text-emerald-700 font-bold'}>
+                      {remainingStock.toFixed(1)} U
+                    </strong>
+                  </div>
+                </div>
+
                 {isInsufficient && (
                   <p className="text-[11px] text-rose-600 font-medium">
                     Requested quantity exceeds available on-hand stock ({availableStock} U).

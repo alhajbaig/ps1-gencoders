@@ -8,6 +8,12 @@ export type AuditAction =
   | 'ORGANIZATION_REJECTED'
   | 'ORGANIZATION_SUSPENDED'
   | 'ORGANIZATION_REACTIVATED'
+  | 'ORGANIZATION_UPDATED'
+  | 'STAFF_CREATED'
+  | 'STAFF_JOINED'
+  | 'STAFF_DEACTIVATED'
+  | 'STAFF_REACTIVATED'
+  | 'BLOOD_ISSUED'
   | 'INVENTORY_ADJUSTED'
   | 'TRANSACTION_CREATED'
   | 'REQUEST_CREATED'
@@ -37,11 +43,11 @@ export interface AuditLog {
   organizationId?: string;
   organizationName?: string;
   action: AuditAction;
-  entityType: 'ORGANIZATION' | 'REQUEST' | 'RESERVATION' | 'TRANSFER' | 'INVENTORY' | 'TRANSACTION' | 'ALERT' | 'SYSTEM';
+  entityType: 'ORGANIZATION' | 'REQUEST' | 'RESERVATION' | 'TRANSFER' | 'INVENTORY' | 'TRANSACTION' | 'ALERT' | 'SYSTEM' | 'HOSPITAL_STAFF';
   entityId: string;
   severity: AuditSeverity;
-  previousState?: Record<string, unknown> | null;
-  newState?: Record<string, unknown> | null;
+  previousState?: unknown;
+  newState?: unknown;
   reason?: string;
   metadata?: Record<string, unknown>;
   ipAddress?: string;
